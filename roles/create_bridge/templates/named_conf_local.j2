@@ -1,0 +1,15 @@
+//include '/etc/bind/zones.rfc1918';    
+% for domain in domains %}     
+one '{{domain}}' IN {  
+      type master;     
+      file '/etc/bind/zones/{{domain}}.de';    
+       allow-query { any; };   
+       allow-update { any; };  
+;      
+one '0.116.10.in-addr.arpa' IN {       
+      type master;     
+      file /etc/bind/zones/{{domain}}.rev;     
+       allow-query { any; };   
+       allow-update { any; };  
+;      
+% endfor %}

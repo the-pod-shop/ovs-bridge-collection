@@ -1,0 +1,104 @@
+- name: get REVERSED_IP
+  register: REVERSED_IP
+  ansible.builtin.shell: |
+    {% for item in domains %} 
+    echo  {{ item.ip }} | awk -F. '{print $3"."$2"."$1}'
+    {% endfor %}
+- name: get ip Cut
+  register: CUT_IP
+  ansible.builtin.shell: |
+    {% for item in domains %} 
+    echo  {{ item.ip }} | awk -F. '{print $1"."$2"."$3}'
+    {% endfor %}
+- name: get last Octet
+  register: last_octet
+  ansible.builtin.shell: |
+    {% for item in domains %} 
+    echo  {{ item.ip }} | awk -F. '{print $4}'
+    {% endfor %}
+- name: test REVERSED_IP
+  debug:
+    msg: "{{REVERSED_IP}}"
+- name: Create folder
+  ignore_errors: yes
+  containers.podman.podman_container_exec:
+    name: dns 
+    argv:
+      - /bin/sh
+      - -c
+      - | 
+        if [ -d "/etc/bind/zones" ]; then
+          rm -r /etc/bind/zones
+          mkdir /etc/bind/zones
+        else
+            mkdir /etc/bind/zones
+        fi
+        chmod +x /etc/bind/zones
+
+- name: forward zone
+  loop: "{{domains}}"
+  loop_control:
+    loop_var: item
+    index_var: i2
+  containers.podman.podman_container_exec:
+    name: "{{container_name}}"
+    argv:
+      - /bin/sh
+      - -c
+      - | 
+        echo ------------------------ zone {{ item.domain }} ------------------------
+        echo                        ---------> forward <---------
+        cat << 'EOF' > /etc/bind/zones/{{ item.domain }}
+        ;
+        ; BIND data file for local loopback interface
+        ;
+        $TTL    604800
+        @       IN      SOA     {{dns_domain}}. {{dns_admin}}. ( 
+                                                {{serial}}    
+                                                {{refrefsh}}     
+                                                {{retry}}   
+                                                {{expire}}    
+                                                {{ncttl}} )      
+        ;
+        @       IN      NS      {{ dns_domain }}.
+        {{item.domain}}. IN  A  {{ item.ip }}
+        {% for sub in item.sub_domains %}
+        {{ sub.sub_domain }}.{{ item.domain }}. IN  A  {{CUT_IP.stdout_lines[i2]}}.{{ sub.ip }}
+        {% endfor %}
+        EOF
+        cat  /etc/bind/zones/{{ item.domain }}
+
+- name: reverse zone
+  loop: "{{domains}}"
+  loop_control:
+    loop_var: item
+    index_var: i2
+  containers.podman.podman_container_exec:
+    name: "{{container_name}}"
+    argv:
+      - /bin/sh
+      - -c
+      - |
+        echo                        ---------> reverse <---------
+        cat << 'EOF' > /etc/bind/zones/{{ item.domain }}.rev
+        ;
+        ; BIND reverse data file for local loopback interface
+        ;
+        $TTL    604800
+        @       IN      SOA     {{dns_domain}}. {{dns_admin}}. ( 
+                                                {{serial}}    
+                                                {{refrefsh}}     
+                                                {{retry}}   
+                                                {{expire}}    
+                                                {{ncttl}} )      
+        ;
+        @       IN      NS     {{ dns_domain }}.
+        {{last_octet.stdout_lines[i2]}} IN  PTR  {{ item.domain }}.
+        {% for sub in item.sub_domains %}
+        {{ sub.ip }}    IN  PTR {{ sub.sub_domain }}.{{ item.domain }}.
+        {% endfor %}
+
+        EOF
+        cat  /etc/bind/zones/{{ item.domain }}.rev
+        echo -------------------------------------------------------------------
+

@@ -1,0 +1,10 @@
+---
+ovs_bridge: bridge0
+nic: enp2s0
+autoconnect: yes
+ipv4_method: auto
+ipv4_address: 192.168.1.100/24
+ipv4_gateway: 192.168.1.1
+vlan_interface: vlanbr
+port0: "port0"
+port1: "port1"

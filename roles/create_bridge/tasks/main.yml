@@ -1,0 +1,11 @@
+  - name: create_bridge
+    ansible.builtin.shell: |
+      nmcli conn add type ovs-bridge conn.interface {{ vlan_interface }} autoconnect {{ autoconnect }} { if ipv4_method != "auto" }  ipv4.method {{ ipv4_method }} ipv4.address {{ ipv4_address }} ipv4.gateway {{ ipv4_gateway }} { endif }
+      # add add a port to the bridge for the internal ovs interface (vlan_interface)
+      nmcli conn add type ovs-port conn.interface port0 master {{ vlan_interface }} autoconnect {{ autoconnect }}
+      
+      # add internal ovs interface to the create port0
+      nmcli conn add type ovs-interface conn.interface {{ vlan_interface }} master {{ port0 }} autoconnect {{ autoconnect }} ipv4.method auto
+      
+      # add another port to the bridge for our ethernet interface
+      nmcli conn add type ovs-port conn.interface {{ port1 }} master {{ vlan_interface }} autoconnect {{ autoconnect }}

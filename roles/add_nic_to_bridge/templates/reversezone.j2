@@ -1,0 +1,17 @@
+ ;
+          ; BIND reverse data file for local loopback interface
+          ;
+          $TTL    604800
+          @       IN      SOA     "{{domain.name}}". root."{{domain.name}}". (
+                                      1         ; Serial
+                                  604800         ; Refresh
+                                  86400         ; Retry
+                                2419200         ; Expire
+                                  604800 )       ; Negative Cache TTL
+          ;
+          ; Name server record
+          @       IN      NS     bindserver.{{domain}}.
+          ; A record for name server
+          bindserver      IN      A      '{{domain.ip}}'
+          '{{ip | reverse}}'.in-addr.arpa. IN PTR tele.pod.com.
+          @       IN      NS      localhost. 

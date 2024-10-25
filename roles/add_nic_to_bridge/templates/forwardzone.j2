@@ -1,0 +1,17 @@
+          ;
+          ; BIND data file for local loopback interface
+          ;
+          $TTL    604800
+          @       IN      SOA     "{{domains.name}}". root."{{domains.name}}". (
+                                      2         ; Serial
+                                  604800         ; Refresh
+                                  86400         ; Retry
+                                2419200         ; Expire
+                                  604800 )       ; Negative Cache TTL
+          ;
+          @       IN      NS      bindserver.{{ip}}.
+          ; A record for name server
+          bindserver      IN      A       '{{domains.ip}}'
+          @       IN      NS      localhost.
+          @       IN      A       '{{domains.ip}}'
+          @       IN      AAAA    ::1

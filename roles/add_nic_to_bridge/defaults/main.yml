@@ -1,0 +1,11 @@
+---
+serial:   2
+refrefsh: 604800
+retry:   86400
+expire:  2419200
+ncttl:   604800
+dns_domain: "lil_bind.com"
+dns_admin: "admin@lil_bind.com"
+
+
+

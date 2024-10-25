@@ -1,0 +1,6 @@
+#/meta/execution-environment.yml
+---
+dependencies:
+ 
+  python: meta/requirements.txt
+version: 1

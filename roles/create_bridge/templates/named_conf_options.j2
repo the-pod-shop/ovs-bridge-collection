@@ -1,0 +1,25 @@
+          acl local-lan { 
+          localhost;
+    #      192.168.2.0/24;
+    #      192.168.120.0/24;
+            {% for subnet in subnets %}
+              {{ subnet }};
+            {% endfor %}
+          };
+          options {
+          directory '/var/cache/bind';
+          forwarders {
+            {% for forwarder in forwarders %}
+              {{forwarder }};
+            {% endfor %}
+          #100.100.100.100;
+              # the tailscale dns
+          };
+          allow-query { local-lan; 100.0.0.0/8 }; # Erlaubt Anfragen nur von den in local-lan definierten Netzwerken
+          dnssec-validation auto;
+          auth-nxdomain no;    // conform to RFC1035
+          listen-on-v6 { any; };
+          recursion no;  // we set that to no to avoid unnecessary traffic
+          querylog yes; // Enable for debugging
+          version 'not available'; // Disable for security
+          };
