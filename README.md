@@ -1,9 +1,6 @@
 # ovs_bridge
-- create openvswitch bridges and tagged vlans without accessing your machine manually!
-- only a single physical NIC is required and you wont break ssh connection!
-- ji_podhead.ovs_bridge will apply your settings, wait for your machine to reboot with the applied configuration 
-- fully automated, so you can continue using those vlans and without accessing the machines/hosts manually
-- ji_podhead.ovs_bridge will also create a libvirt Virtual Network for you 
+- creates openvswitch bridges, tagged vlans and the related libvirt Virtual Networks !
+- only a single physical NIC is required and you wont break ssh connection! NO REBOOT REQUIRED!!
 - isolate your wm traffic using ansible, ovs bridges and vlans 
 - create your vlans and  virtual machines with a single playbook
 
@@ -33,10 +30,6 @@ this is only tested for rhel
     state: present
 ```
 ## Create the Bridges and VLAN's
-<center><b>
-we will not add the physical nic to the ovs bridge just yet!!
-</b></center>
-
 
 ```yaml
 ---
@@ -46,28 +39,17 @@ we will not add the physical nic to the ovs bridge just yet!!
   become_method: sudo
   collections:
     - ji_podhead.ovs_bridge
-
-  tasks:
-
-  - name: create the bridge
-    import_role: 
-      name: ji_podhead.ovs_bridge.create_bridge
-    vars:
-      ovs_bridge_connection: vlanbr_connection
-      ovs_bridge_interface: vlanbr
-      connection_port: connection_port
-      interface_port: interface_port
-      autoconnect: "yes"
-      ipv4_method: static
-      ipv4_address: 192.168.1.100/24
-      ipv4_gateway: "192.168.1.1"
-
-  
-  - name: add vlans
-    import_role: 
-      name: ji_podhead.ovs_bridge.add_vlans
-    vars:
-        vlans:
+  vars:
+    physical_nic: enp2s0
+    interface_port: interface_port
+    ovs_bridge_connection: vlanbr_connection
+    connection_port: connection_port
+    ovs_bridge_interface: vlanbr # the name of the interface of our ovs-bridge
+    ipv4_address: 192.168.1.100/24 # the ip of the ovs-bridge
+    ipv4_method: static
+    ipv4_gateway: "192.168.1.1" # my router
+    autoconnect: "yes"
+    vlans:
           - interface: vlan1
             master: vlanbr_connection
             tag: 1
@@ -82,84 +64,89 @@ we will not add the physical nic to the ovs bridge just yet!!
             connection: vlan-con-2
             ipv4_method: static
             ipv4_address: "192.168.8.1/24"
+  
+  tasks:
+
+- name: create bridge, interface & ports
+    import_role: 
+      name: ji_podhead.ovs_bridge.create_bridge
+
+  - name: add vlans
+    import_role: 
+      name: ji_podhead.ovs_bridge.add_vlans
+
+# now we will add the physical nic to our bridge, start the ovs-slave connection 
+# we also give our vlanbr-interface an ip
+# no reboot required and you can directly continue with ansible playbooks
+  - name: add nic
+    import_role:
+      name: ji_podhead.ovs_bridge.add_nic_to_bridge
+
 ```
-- we have not added a IP to our vlanbr and we have not added our nic to our bridge as well, since we dont want to loose our ssh connection.
-- we will do this in the next step, but first lets check out the results
-## Result
 ```bash
 $ nmcli con show
 ```
- ```yaml
-    NAME                            UUID                                  TYPE           DEVICE            
-    vlan-con-1                      270dd2b9-10d5-4458-ba32-e6089f94aae9  ovs-interface  vlan1             
-    vlan-con-2                      85978b84-f216-435e-a017-ecd24bb0afd3  ovs-interface  vlan2             
-    ovs-bridge-vlanbr_connection    8511136c-5778-4120-8c55-f77e3842ea36  ovs-bridge     vlanbr_connection 
-    ovs-slave-connection_port       0a553bb0-4570-4ab9-8049-3828dafa1be9  ovs-port       connection_port   
-    ovs-slave-interface_port        dec50f48-5a84-41c0-8253-ad49e314ee48  ovs-port       interface_port    
-    vlan-port-1                     067d7ed3-a522-4bb6-9850-bd2663161a08  ovs-port       vlan1             
-    vlan-port-2                     eed6fb76-a5b8-48a2-b9f6-9c9bd84f9da4  ovs-port       vlan2             
-    ovs-slave-vlanbr                61c794a0-7dc6-4d38-b142-8e24d0699c7c  ovs-interface  vlanbr            
-    lo                              34689ed1-13f2-4e1f-93cb-19e9f0ab750d  loopback       lo                
-    enp2s0                          419acba5-e8e2-412a-881e-960009e846b8  ethernet       enp2s0            
-    Kabelgebundene Verbindung 3     f317fa68-bce0-3669-90a1-6ca4c83df142  ethernet       --                
-    ovs-bridge-vlanbr_connection-1  b6195711-4a37-4019-8e1c-149df5a7c62a  ovs-bridge     --                
-    ovs-bridge-vlanbr_connection-2  767b165d-a05b-46d0-8938-663d6aee7e97  ovs-bridge     --                
-    ovs-slave-connection_port-1     1c822758-d068-4eae-93a7-e09abac6a9cd  ovs-port       --                
-    ovs-slave-connection_port-2     e1c5fedf-3496-42d0-ba91-f636fe2c24b8  ovs-port       --                
-    ovs-slave-interface_port-1      196df3df-79da-43bf-9b24-2ccf82fe4bb9  ovs-port       --                
-    ovs-slave-interface_port-2      a0ae71de-6d92-474c-bb31-d28a656b862f  ovs-port       --                
-    ovs-slave-vlanbr-1              7dcaeec9-08db-4bfa-90fa-75a1e713e0dc  ovs-interface  --                
-    ovs-slave-vlanbr-2              bbb16daf-e51b-4b22-a618-33f57dfece2c  ovs-interface  --                
-  ```
+  - ```yaml 
+      NAME                          UUID                                  TYPE           DEVICE            
+    ovs-slave-vlanbr              2fa5810e-394d-4f76-852e-b8829d2adacb  ovs-interface  vlanbr            
+    vlan-con-1                    2c016716-11d9-4ec1-a799-0699d7670f2f  ovs-interface  vlan1             
+    vlan-con-2                    5d2904c1-5198-4e99-bd92-6c9e2ec0f09d  ovs-interface  vlan2             
+    ovs-bridge-vlanbr_connection  329cedba-8796-4ab1-b0a4-ce2d4daf3f69  ovs-bridge     vlanbr_connection 
+    ovs-slave-connection_port     195530fc-5c86-4f57-b7e7-0d516a0cc49e  ovs-port       connection_port   
+    ovs-slave-enp2s0              84f158db-0d2d-4f6b-b4c6-3e12e69b57c2  ethernet       enp2s0            
+    ovs-slave-interface_port      759d1d97-444d-45d2-baa9-feb4227a6831  ovs-port       interface_port    
+    vlan-port-1                   b6d2af7b-e394-4f36-a99c-57d8da816fa0  ovs-port       vlan1             
+    vlan-port-2                   87570fa9-46aa-4389-9ca7-5ec4a95372d0  ovs-port       vlan2             
+    lo                            09d065e6-5a6f-4886-bbca-fb612df086d8  loopback       lo    
+    ```
 
-----
 ```bash
-ifconfig
+$ ifconfig
 ```
-  ```yaml
+  - ```yaml
     enp2s0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
-            inet 192.168.1.100  netmask 255.255.255.0  broadcast 0.0.0.0
-            ether 40:b0:76:46:6f:76  txqueuelen 1000  (Ethernet)
-            RX packets 2079  bytes 1056085 (1.0 MiB)
-            RX errors 0  dropped 0  overruns 0  frame 0
-            TX packets 1377  bytes 169162 (165.1 KiB)
-            TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
-            device interrupt 16  
+          ether 40:b0:76:46:6f:76  txqueuelen 1000  (Ethernet)
+          RX packets 2665  bytes 930652 (908.8 KiB)
+          RX errors 0  dropped 0  overruns 0  frame 0
+          TX packets 2084  bytes 261309 (255.1 KiB)
+          TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+          device interrupt 16  
 
     lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
             inet 127.0.0.1  netmask 255.0.0.0
             inet6 ::1  prefixlen 128  scopeid 0x10<host>
             loop  txqueuelen 1000  (Lokale Schleife)
-            RX packets 2934  bytes 584948 (571.2 KiB)
+            RX packets 980  bytes 230168 (224.7 KiB)
             RX errors 0  dropped 0  overruns 0  frame 0
-            TX packets 2934  bytes 584948 (571.2 KiB)
+            TX packets 980  bytes 230168 (224.7 KiB)
             TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
 
     vlan1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
             inet 192.168.7.1  netmask 255.255.255.0  broadcast 192.168.7.255
-            inet6 fe80::e4:7a77:3c77:8ab3  prefixlen 64  scopeid 0x20<link>
-            ether 5a:ff:b8:64:48:84  txqueuelen 1000  (Ethernet)
+            inet6 fe80::c63:1c49:cc21:35be  prefixlen 64  scopeid 0x20<link>
+            ether 82:d9:0f:d8:8a:3a  txqueuelen 1000  (Ethernet)
             RX packets 0  bytes 0 (0.0 B)
             RX errors 0  dropped 0  overruns 0  frame 0
-            TX packets 30  bytes 3620 (3.5 KiB)
+            TX packets 29  bytes 3580 (3.4 KiB)
             TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
 
     vlan2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
             inet 192.168.8.1  netmask 255.255.255.0  broadcast 192.168.8.255
-            inet6 fe80::b9ea:1728:2ee:2300  prefixlen 64  scopeid 0x20<link>
-            ether e2:5e:0a:e3:31:46  txqueuelen 1000  (Ethernet)
+            inet6 fe80::e411:ca06:2969:2bc2  prefixlen 64  scopeid 0x20<link>
+            ether be:ea:5e:df:e9:ce  txqueuelen 1000  (Ethernet)
             RX packets 0  bytes 0 (0.0 B)
             RX errors 0  dropped 0  overruns 0  frame 0
-            TX packets 28  bytes 3430 (3.3 KiB)
+            TX packets 31  bytes 3655 (3.5 KiB)
             TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
-  ```
-  - notice that our vlanbr interface is not et listed here, because its an inactive connection. 
-  - the reason why its inactive is that its connection is inactive
-  - however it already show up using `$ ip a` command
-    ```yaml
-        420: vlanbr: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UNKNOWN group default qlen 1000
-        link/ether 0a:db:8a:b1:90:e3 brd ff:ff:ff:ff:ff:ff
-        inet6 fe80::437b:60cb:d15:1219/64 scope link noprefixroute 
-        valid_lft forever preferred_lft forever
+
+    vlanbr: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+            inet 192.168.1.100  netmask 255.255.255.0  broadcast 0.0.0.0
+            inet6 fd24:25eb:4a0::d79  prefixlen 128  scopeid 0x0<global>
+            inet6 fd24:25eb:4a0:0:7d7a:5a93:c7fe:258a  prefixlen 64  scopeid 0x0<global>
+            inet6 fe80::e046:4028:1b5d:9608  prefixlen 64  scopeid 0x20<link>
+            ether 22:6f:9a:b9:82:76  txqueuelen 1000  (Ethernet)
+            RX packets 209  bytes 20589 (20.1 KiB)
+            RX errors 0  dropped 0  overruns 0  frame 0
+            TX packets 189  bytes 33714 (32.9 KiB)
+            TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
     ```
-    
