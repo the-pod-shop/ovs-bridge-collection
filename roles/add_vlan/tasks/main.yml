@@ -1,5 +1,0 @@
-
-- name: add vlan
-  ansible.builtin.command:  |
-    nmcli c add type ovs-port conn.interface {{ vlan_interface  }} master {{ ovs_bridge }} ovs-port.tag {{ vlan_tag  }} con-name {{ vlan_port }}
-    nmcli c add type ovs-interface slave-type ovs-port conn.interface {{ vlan_interface  }} master {{ vlan_port }} con-name {{ vlan_interface_conection }} ipv4.method static ipv4.address {{ vlan_ip }}

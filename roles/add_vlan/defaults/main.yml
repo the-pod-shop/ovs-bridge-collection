@@ -1,7 +1,0 @@
----
-vlan_interface: bridge0 
-ovs_bridge:
-vlan_tag: 1
-vlan_port: v1p
-vlan_interface_conection: v1if
-vlan_ip: 200.1.0.0/24

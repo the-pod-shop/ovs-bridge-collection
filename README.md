@@ -6,25 +6,24 @@
 
 # Preview
 ![image](https://github.com/user-attachments/assets/afb618ab-1e93-428f-a32a-add913a924a9)
-<<<<<<< Updated upstream
 > - we created a ovs bridge and 3 vlan ports.
 > - the configs will also apply after reboot because w have nmcli connections
 > - we also created the libvirt and docker networks as well as the vm config
-=======
-> we created a ovs bridge and 3 vlan ports.
-> the configs will also apply after reboot because w have nmcli connections
-> we also created the libvirt and docker networks as well as the vm config
->>>>>>> Stashed changes
 
 # Usage
 ## Install Dependencies
-<center><b>
-PLS find out how to install openvswitch on your machine! <br>
-<br>On RHEL and Debian
+<center>
+<b>
+requires openvswitch with ovs-vsctl and NetworkManager-ovs plugin
 </b>
 </center>
 
-- find the base package:
+- install collection
+  ```bash
+  $ ansible-galaxy collection install ji_podhead.ovs_bridge
+  ```
+  
+- find the openvswitch package:
 
   ```bash
   $ dnf search openvswitch
@@ -41,7 +40,7 @@ PLS find out how to install openvswitch on your machine! <br>
   openvswitch3.3-test.noarch : Open vSwitch testing utilities
   ```
   
-- install using ansible
+- install openvswitch using ansible
   ```yaml
   - name: install NetworkManager.ovs
     ansible.builtin.dnf:
@@ -53,7 +52,8 @@ PLS find out how to install openvswitch on your machine! <br>
     name: NetworkManager.ovs
     state: present
   ```
-  
+
+
 ## Create the Bridges and VLAN's
 
 ```yaml
@@ -140,11 +140,7 @@ PLS find out how to install openvswitch on your machine! <br>
     vars:
       set_fact: true
       file_target_host: localhost
-<<<<<<< Updated upstream
       file: "<your xml path>/network.xml"  
-=======
-      file: "/home/ji/Dokumente/podshop-org/Pod-Shop-App-Configs/network.xml"  
->>>>>>> Stashed changes
       default: default
       libvirt_network: vlan_network
       libvirt_host: "{{inventory_hostname}}"
@@ -156,12 +152,8 @@ PLS find out how to install openvswitch on your machine! <br>
 
 ### Libvirt VM Config
 - hotplug deletes and recreates the nic of the vm, so it should only be used if you change vlan
-<<<<<<< Updated upstream
 - dont duplicate mac addresses manually, or this role might fail
   - i have not implemented a "deletion by pci id" method
-=======
-- you should not change makes in runtime, i have not implemented a "deletion by pci id" method
->>>>>>> Stashed changes
 - if you enable hotplug you dont need to reboot to make changes active, but you maybe loose the 
 - without hotplug this role will update the interface
 
@@ -173,11 +165,7 @@ PLS find out how to install openvswitch on your machine! <br>
       set_fact: false
       target_vm: kali
       libvirt_host: "{{inventory_hostname}}"
-<<<<<<< Updated upstream
       file: "<your xml path>/kali_net.xml"  
-=======
-      file: "/home/worker/libvirt-xmls/kali_net.xml"  
->>>>>>> Stashed changes
       libvirt_network: vlan_network         # << the libvirt nework that is not visible on the host
       hotplug: "true"                        # << deletes and recreates the vNIC! !!! DONT USE ON MAIN/CONTROL NIC !!!! !!!REQUIRES THAT MACHINE IS UP AND RUNNING!!! !!!INTERFACE TYPE IS CHANGING TO BRIDGE WHEN VM IS TURNED ON!!!
       mac_address: "00:00:00:00:00:02"      # << ONLY REQUIRED WHEN USING HOTPLUG AND IF VM IS USING MORE THAN ONE NIC !!! 
@@ -249,10 +237,6 @@ lo                           9075c7d5-7099-48d5-a19f-833a76b2458a  loopback     
 ## ifconfig
 > the last link is my opensense vm
 ```bash
-<<<<<<< Updated upstream
-=======
-[root@dcworkshop1 worker]# ifconfig
->>>>>>> Stashed changes
 dns: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
         inet 200.1.0.254  netmask 255.255.255.255  broadcast 0.0.0.0
         inet6 fe80::f032:9554:ee00:7480  prefixlen 64  scopeid 0x20<link>
@@ -421,11 +405,7 @@ $ podman network inspect firewall_maclavan
 ```
 ## podman network inspect proxy_maclavan
 ```bash
-<<<<<<< Updated upstream
 $ podman network inspect proxy_maclavan
-=======
-podman network inspect proxy_maclavan
->>>>>>> Stashed changes
 [
      {
           "name": "proxy_maclavan",
@@ -442,7 +422,4 @@ podman network inspect proxy_maclavan
      }
 ]
 ```
-<<<<<<< Updated upstream
-=======
 
->>>>>>> Stashed changes
