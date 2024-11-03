@@ -1,0 +1,101 @@
+---
+- hosts: dcworkshop1                
+  gather_facts: no
+  become: true
+  become_method: sudo
+  collections:
+    - ji_podhead.ovs_bridge
+  vars:
+    physical_nic: enp2s0
+    ovs_bridge: ovsbr
+    interface_port: cp
+    connection_port: ifp
+    ipv4_address: 192.168.1.100/24    # the ip of the ovs-bridge
+    ipv4_method: static
+    ipv4_gateway: 192.168.1.1       # the gateway of the ovs-bridge, in this case my router, because this will also be my controll interface, cause of a missing second nic
+    vlan_router: 200.0.0.1
+    autoconnect: "yes"
+    vlans:                  
+          - interface: firewall
+            master: ovsbr
+            tag: 1
+            type: "tap"
+            port: firewall-port
+            connection: firewall-con
+            sub: 200.0.0.0/24         # <- the subnet of the vlan !!!!ONLY NEEDED FOR DOCKER NETWORK!!!!
+            if_gateway: 200.0.0.1  # <- the gateway of the vlan-interface !!!if_ip REQUIRED!!!  
+            ipv4_method: dhcp         # <- the method of the vlan-interface auto, or static
+            ipam_driver: host-local      # <- docker network ipam driver - host-local, dhcp, or none - if set to local: gateway and subnet must match
+        
+          - interface: dns
+            master: ovsbr
+            tag: 2
+            type: "intern"
+            port: dns-port
+            connection: dns-con
+            sub: 200.0.1.0/24         
+            if_ip: 200.1.0.254/32     # <- the ip of the vlan-interface !!!NOT REQUIRED, ONLY WHEN USING GATEWAY!!!
+            if_gateway: 200.0.1.1     
+            ipv4_method: static 
+            ipam_driver: host-local
+        
+          - interface: proxy
+            master: ovsbr
+            tag: 3
+            type: "intern"
+            port: proxy-port
+            connection: proxy-con
+            if_ip: 200.2.0.254/32     # <- the ip of the vlan-interface !!!NOT REQUIRED, ONLY WHEN USING GATEWAY!!!
+            if_gateway: 200.0.0.1 
+            ipv4_method: static
+            ipam_driver: dhcp         # <- no ip or gateway needed, we are using the dhcp of our opnsense firewall
+  tasks:
+  - name: delete_old_bridge
+    import_role: 
+      name: ji_podhead.ovs_bridge.delete_old_ovs_connections
+  - name: create bridge, interface & ports
+    import_role: 
+      name: ji_podhead.ovs_bridge.create_bridge
+  - name: add nic
+    import_role:
+      name: ji_podhead.ovs_bridge.add_nic_to_bridge
+  - name: add vlans
+    import_role: 
+      name: ji_podhead.ovs_bridge.add_vlans  
+  - name:  create network
+    delegate_to: localhost
+    import_role:
+      name: ji_podhead.ovs_bridge.libvirt_virtual_network
+    vars:
+      set_fact: true
+      file_target_host: localhost
+      file: "/home/ji/Dokumente/podshop-org/Pod-Shop-App-Configs/network.xml"  
+      default: default
+      libvirt_network: vlan_network
+      libvirt_host: "{{inventory_hostname}}"
+      trunks:
+        - name: router
+          trunk_id: 0
+          vlans: [1,2,3]
+  - name: set libvirt vm vNIC
+    import_role:
+      name: ji_podhead.ovs_bridge.vm_interface
+    vars:
+      set_fact: false
+      target_vm: kali
+      libvirt_host: "{{inventory_hostname}}"
+      file: "/home/worker/libvirt-xmls/kali_net.xml"  
+      libvirt_network: vlan_network         # << the libvirt nework that is not visible on the host
+      hotplug: "true"                        # << deletes and recreates the vNIC! !!! DONT USE ON MAIN/CONTROL NIC !!!! !!!REQUIRES THAT MACHINE IS UP AND RUNNING!!! !!!INTERFACE TYPE IS CHANGING TO BRIDGE WHEN VM IS TURNED ON!!!
+      mac_address: "00:00:00:00:00:02"      # << ONLY REQUIRED WHEN USING HOTPLUG AND IF VM IS USING MORE THAN ONE NIC !!! 
+      vlan: dns
+      id: fc22b4d0-c541-4bbe-9b94-00556eb817dd # << the interface id of the openvswitch port of your vm. i added this, so you maybe can alter the vlan/mac in realtime, but keep your oepnsense settings without creating new interfaces. not sure if that qords though
+  - name: create_docker_networks
+    import_role:
+      name: ji_podhead.ovs_bridge.create_docker_networks
+    vars:
+      platform: podman
+      ignore: ""
+      prefix: "" 
+      suffix: _maclavan
+      force_delete: "true"

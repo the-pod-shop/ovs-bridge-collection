@@ -6,6 +6,7 @@
 
 # Preview
 ![image](https://github.com/user-attachments/assets/afb618ab-1e93-428f-a32a-add913a924a9)
+- thise is the result of the example.yml playbook included in this repo/collection
 > - we created a ovs bridge and 3 vlan ports.
 > - the configs will also apply after reboot because w have nmcli connections
 > - we also created the libvirt and docker networks as well as the vm config
@@ -18,41 +19,42 @@ requires openvswitch with ovs-vsctl and NetworkManager-ovs plugin
 </b>
 </center>
 
-- install collection
-  ```bash
-  $ ansible-galaxy collection install ji_podhead.ovs_bridge
-  ```
+### install collection
+```bash
+$ ansible-galaxy collection install ji_podhead.ovs_bridge
+```
   
-- find the openvswitch package:
+### find the openvswitch package:
 
-  ```bash
-  $ dnf search openvswitch
-  ```
+```bash
+$ dnf search openvswitch
+```
 
 - look for the right package that contains ovs-vsctl
   - in my case i used v. 3.3
  
-  ```bash 
-  ---
-  openvswitch3.3.x86_64 : Open vSwitch
-  openvswitch3.3-devel.x86_64 : Open vSwitch OpenFlow development package (library, headers)
-  openvswitch3.3-ipsec.x86_64 : Open vSwitch IPsec tunneling support
-  openvswitch3.3-test.noarch : Open vSwitch testing utilities
-  ```
+```bash 
+---
+openvswitch3.3.x86_64 : Open vSwitch
+openvswitch3.3-devel.x86_64 : Open vSwitch OpenFlow development package (library, headers)
+openvswitch3.3-ipsec.x86_64 : Open vSwitch IPsec tunneling support
+openvswitch3.3-test.noarch : Open vSwitch testing utilities
+```
   
-- install openvswitch using ansible
-  ```yaml
-  - name: install NetworkManager.ovs
-    ansible.builtin.dnf:
-    name: openvswitch3.3.x86_64
-    state: present
+### install openvswitch using ansible
+```yaml
+- name: install NetworkManager.ovs
+  ansible.builtin.dnf:
+  name: openvswitch3.3.x86_64
+  state: present
 
-  - name: install NetworkManager.ovs
-    ansible.builtin.dnf:
-    name: NetworkManager.ovs
-    state: present
-  ```
+- name: install NetworkManager.ovs
+  ansible.builtin.dnf:
+  name: NetworkManager.ovs
+  state: present
+```
 
+- you can try the following code snippets directly by using the example.yml playbook in this repo / collections
 
 ## Create the Bridges and VLAN's
 
@@ -129,48 +131,49 @@ requires openvswitch with ovs-vsctl and NetworkManager-ovs plugin
       name: ji_podhead.ovs_bridge.add_vlans  
 ```
 ### Libvirt Networks
- - we will create a libvirt that has a trunk for our vlans, so we can add the vlan interfaces in the vm ratehr than creating 4 vm interfaces
+- we will create a libvirt that has a trunk for our vlans, so we can add the vlan interfaces in the vm ratehr than creating 4 vm interfaces
 - you can add a string to ignore vlans for which you dont want to create maclavan networks
 
- ```yaml
-  - name:  create libvirt virtual network network
-    delegate_to: localhost
-    import_role:
-      name: ji_podhead.ovs_bridge.libvirt_virtual_network
-    vars:
-      set_fact: true
-      file_target_host: localhost
-      file: "<your xml path>/network.xml"  
-      default: default
-      libvirt_network: vlan_network
-      libvirt_host: "{{inventory_hostname}}"
-      trunks:
-        - name: router
-          trunk_id: 0
-          vlans: [1,2,3]
+```yaml
+- name:  create libvirt virtual network network
+  delegate_to: localhost
+  import_role:
+    name: ji_podhead.ovs_bridge.libvirt_virtual_network
+  vars:
+    set_fact: true
+    file_target_host: localhost
+    file: "<your xml path>/network.xml"  
+    default: default
+    libvirt_network: vlan_network
+    libvirt_host: "{{inventory_hostname}}"
+    trunks:
+      - name: router
+        trunk_id: 0
+        vlans: [1,2,3]
 ```
 
 ### Libvirt VM Config
 - hotplug deletes and recreates the nic of the vm, so it should only be used if you change vlan
 - dont duplicate mac addresses manually, or this role might fail
   - i have not implemented a "deletion by pci id" method
+
 - if you enable hotplug you dont need to reboot to make changes active, but you maybe loose the 
 - without hotplug this role will update the interface
 
 ```yaml
-  - name: set libvirt vm interface
-    import_role:
-      name: ji_podhead.ovs_bridge.vm_config
-    vars:
-      set_fact: false
-      target_vm: kali
-      libvirt_host: "{{inventory_hostname}}"
-      file: "<your xml path>/kali_net.xml"  
-      libvirt_network: vlan_network         # << the libvirt nework that is not visible on the host
-      hotplug: "true"                        # << deletes and recreates the vNIC! !!! DONT USE ON MAIN/CONTROL NIC !!!! !!!REQUIRES THAT MACHINE IS UP AND RUNNING!!! !!!INTERFACE TYPE IS CHANGING TO BRIDGE WHEN VM IS TURNED ON!!!
-      mac_address: "00:00:00:00:00:02"      # << ONLY REQUIRED WHEN USING HOTPLUG AND IF VM IS USING MORE THAN ONE NIC !!! 
-      vlan: dns
-      id: fc22b4d0-c541-4bbe-9b94-00556eb817dd # << the interface id of the openvswitch port of your vm. i added this, so you maybe can alter the vlan/mac in realtime, but keep your oepnsense settings without creating new interfaces. not sure if that qords though
+- name: set libvirt vm interface
+  import_role:
+    name: ji_podhead.ovs_bridge.vm_config
+  vars:
+    set_fact: false
+    target_vm: kali
+    libvirt_host: "{{inventory_hostname}}"
+    file: "<your xml path>/kali_net.xml"  
+    libvirt_network: vlan_network         # << the libvirt nework that is not visible on the host
+    hotplug: "true"                        # << deletes and recreates the vNIC! !!! DONT USE ON MAIN/CONTROL NIC !!!! !!!REQUIRES THAT MACHINE IS UP AND RUNNING!!! !!!INTERFACE TYPE IS CHANGING TO BRIDGE WHEN VM IS TURNED ON!!!
+    mac_address: "00:00:00:00:00:02"      # << ONLY REQUIRED WHEN USING HOTPLUG AND IF VM IS USING MORE THAN ONE NIC !!! 
+    vlan: dns
+    id: fc22b4d0-c541-4bbe-9b94-00556eb817dd # << the interface id of the openvswitch port of your vm. i added this, so you maybe can alter the vlan/mac in realtime, but keep your oepnsense settings without creating new interfaces. not sure if that qords though
 ```
 
 # Docker/Podman Networks
@@ -189,8 +192,10 @@ requires openvswitch with ovs-vsctl and NetworkManager-ovs plugin
       suffix: _maclavan
       force_delete: "true"
 ```
+
 # Results
 ## ovs-vsctl show
+
 ```bash
 $ ovs-vsctl show
 cfb54f88-fe21-46bb-a27d-a9b3baa14eb4
@@ -215,7 +220,9 @@ cfb54f88-fe21-46bb-a27d-a9b3baa14eb4
                 type: system
     ovs_version: "3.3.1"
 ```
+
 ## nmcli connections
+
 ```bash
 $ nmcli con show 
 NAME                         UUID                                  TYPE           DEVICE   
@@ -235,7 +242,9 @@ lo                           9075c7d5-7099-48d5-a19f-833a76b2458a  loopback     
 > the nice green color is telling us that everything is up and running
 
 ## ifconfig
+
 > the last link is my opensense vm
+
 ```bash
 dns: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
         inet 200.1.0.254  netmask 255.255.255.255  broadcast 0.0.0.0
@@ -299,8 +308,11 @@ vnet27: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
         TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
 
 ```
+
 ## libvirt
+
 ![image](https://github.com/user-attachments/assets/a3df8f10-852c-49d0-88bf-f45a80296d74)
+
 
 ```bash
 $ virsh net-list
@@ -342,14 +354,18 @@ $ virsh net-dumpxml vlan_network
   </portgroup>
 </network>
 ```
+
 ## vm interface
+
 - get all interfaces
+
 ```bash
 $ virsh domiflist kali 
  Schnittstelle   Typ      Quelle         Modell    MAC
 ----------------------------------------------------------------------
  vnet23          bridge   vlan_network   rtl8139   00:00:00:00:00:02
 ```
+
 - dump the xml
 ```bash
 $ virsh domif-setlink kali 00:00:00:00:00:02 up --print-xml 
@@ -370,6 +386,7 @@ $ virsh domif-setlink kali 00:00:00:00:00:02 up --print-xml
 ```
 
 ## podman network ls
+
 ```bash
 $ podman network ls
 NETWORK ID    NAME               DRIVER
@@ -378,7 +395,9 @@ NETWORK ID    NAME               DRIVER
 2f259bab93aa  podman             bridge
 3f10bd1c5cb1  proxy_maclavan     macvlan
 ```
+
 ## podman network inspect firewall_maclavan
+
 ```bash
 $ podman network inspect firewall_maclavan
 [
@@ -403,7 +422,9 @@ $ podman network inspect firewall_maclavan
      }
 ]
 ```
+
 ## podman network inspect proxy_maclavan
+
 ```bash
 $ podman network inspect proxy_maclavan
 [

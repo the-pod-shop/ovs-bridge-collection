@@ -1,7 +1,7 @@
 namespace: "ji_podhead"
 name: "ovs_bridge"
 description:  "create openvswitch bridges, tagged vlans, libvirt/docker/podman networks without accessing your machine and isolate your wm traffic in a single playbook!"
-version: "0.0.4"
+version: "0.0.8"
 readme: "README.md"
 authors:
     - "ji-podhead (https://https://www.github.com/ji-podhead)"
