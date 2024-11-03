@@ -229,7 +229,6 @@ lo                           9075c7d5-7099-48d5-a19f-833a76b2458a  loopback     
 ## ifconfig
 > the last link is my opensense vm
 ```bash
-[root@dcworkshop1 worker]# ifconfig
 dns: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
         inet 200.1.0.254  netmask 255.255.255.255  broadcast 0.0.0.0
         inet6 fe80::f032:9554:ee00:7480  prefixlen 64  scopeid 0x20<link>
