@@ -6,33 +6,47 @@
 
 # Preview
 ![image](https://github.com/user-attachments/assets/afb618ab-1e93-428f-a32a-add913a924a9)
-> we created a ovs bridge and 3 vlan ports.
-> the configs will also apply after reboot because w have nmcli connections
-> we also created the libvirt and docker networks as well as the vm config
+> - we created a ovs bridge and 3 vlan ports.
+> - the configs will also apply after reboot because w have nmcli connections
+> - we also created the libvirt and docker networks as well as the vm config
 
 # Usage
 ## Install Dependencies
 <center><b>
-this is only tested for rhel
-</b></center>
+PLS find out how to install openvswitch on your machine! <br>
+<br>On RHEL and Debian
+</b>
+</center>
 
+- find the base package:
+
+```bash
+$ dnf search openvswitch
 ```
-- name: Ensure Open vSwitch is installed
+
+- look for the right package that contains ovs-vsctl
+  - in my case i used v. 3.3
+  ```bash 
+  ---
+  openvswitch3.3.x86_64 : Open vSwitch
+  openvswitch3.3-devel.x86_64 : Open vSwitch OpenFlow development package (library, headers)
+  openvswitch3.3-ipsec.x86_64 : Open vSwitch IPsec tunneling support
+  openvswitch3.3-test.noarch : Open vSwitch testing utilities
+  ```
+  
+- install using ansible
+  ```yaml
+  - name: install NetworkManager.ovs
     ansible.builtin.dnf:
-    name: openvswith
+    name: openvswitch3.3.x86_64
     state: present
 
-- name: Start Open vSwitch service
-    systemd:
-    name: openvswitch.service
-    state: started
-    enabled: yes
-
-- name: install NetworkManager.ovs
+  - name: install NetworkManager.ovs
     ansible.builtin.dnf:
     name: NetworkManager.ovs
     state: present
-```
+  ```
+  
 ## Create the Bridges and VLAN's
 
 ```yaml
@@ -110,15 +124,16 @@ this is only tested for rhel
 ### Libvirt Networks
  - we will create a libvirt that has a trunk for our vlans, so we can add the vlan interfaces in the vm ratehr than creating 4 vm interfaces
 - you can add a string to ignore vlans for which you dont want to create maclavan networks
+
  ```yaml
-  - name:  create network
+  - name:  create libvirt virtual network network
     delegate_to: localhost
     import_role:
       name: ji_podhead.ovs_bridge.libvirt_virtual_network
     vars:
       set_fact: true
       file_target_host: localhost
-      file: "/home/ji/Dokumente/podshop-org/Pod-Shop-App-Configs/network.xml"  
+      file: "<your xml path>/network.xml"  
       default: default
       libvirt_network: vlan_network
       libvirt_host: "{{inventory_hostname}}"
@@ -127,6 +142,7 @@ this is only tested for rhel
           trunk_id: 0
           vlans: [1,2,3]
 ```
+
 ### Libvirt VM Config
 - hotplug deletes and recreates the nic of the vm, so it should only be used if you change vlan
 - you should not change makes in runtime, i have not implemented a "deletion by pci id" method
@@ -134,14 +150,14 @@ this is only tested for rhel
 - without hotplug this role will update the interface
 
 ```yaml
-  - name: set libvirt vm vNIC
+  - name: set libvirt vm interface
     import_role:
-      name: ji_podhead.ovs_bridge.vm_vNIC_config
+      name: ji_podhead.ovs_bridge.vm_config
     vars:
       set_fact: false
       target_vm: kali
       libvirt_host: "{{inventory_hostname}}"
-      file: "/home/worker/libvirt-xmls/kali_net.xml"  
+      file: "<your xml path>/kali_net.xml"  
       libvirt_network: vlan_network         # << the libvirt nework that is not visible on the host
       hotplug: "true"                        # << deletes and recreates the vNIC! !!! DONT USE ON MAIN/CONTROL NIC !!!! !!!REQUIRES THAT MACHINE IS UP AND RUNNING!!! !!!INTERFACE TYPE IS CHANGING TO BRIDGE WHEN VM IS TURNED ON!!!
       mac_address: "00:00:00:00:00:02"      # << ONLY REQUIRED WHEN USING HOTPLUG AND IF VM IS USING MORE THAN ONE NIC !!! 
