@@ -1,0 +1,149 @@
+---
+- name: Render network XML template
+  debug: 
+    msg: "{{ lookup('template', './vNIC.xml.j2') }}"
+  register: xml
+
+- name: Get rendered XML content
+  set_fact:
+    my_xml: "{{xml.msg}}"
+  when: set_fact == true
+
+- name: Copy XML file to localhost
+  delegate_to: "{{libvirt_host}}"
+  copy:
+    content: "{{xml.msg}}"
+    dest: "{{file}}"
+    mode: '0644'
+  when: file  != "" 
+- name: Check if interface with MAC address exists
+  delegate_to: "{{libvirt_host}}"
+  ansible.builtin.shell: |
+    atttach_interface(){
+      virsh attach-device "{{ target_vm }}" --file "{{ file }}" --current 
+      echo created "{{ mac_address }}"
+    }
+    # the interface type is changing to bridge from network when the vm is turned on, hence this requires a running domain
+    detach_interface(){
+     virsh detach-interface "{{ target_vm }}" bridge --mac "{{ mac_address }}" --current 
+    }
+    
+    update_interface(){
+      virsh update-device "{{target_vm}}" "{{file}}" --persistent
+      echo updated "{{ mac_address }}"
+    }
+
+    interface=$(virsh domiflist "{{ target_vm }}" | grep -q "{{ mac_address }}" )
+    echo "$interface"
+    if [ -z $interface ]; then
+      if [ "{{hotplug}}" == "false" ];  then
+        update_interface
+      else
+        detach_interface 
+        atttach_interface
+      fi
+    else
+      atttach_interface
+    fi
+
+
+# virsh detach-interface "{{ target_vm }}" network --mac "{{ mac_address }}" 
+
+
+#  # virsh net-list 
+#   Name           Status   Automatischer Start   Bleibend
+#  ---------------------------------------------------------
+#   default        Aktiv    ja                    ja
+#   vlan_network   Aktiv    nein                  ja
+#  
+#  # virsh domiflist kali
+#   Schnittstelle   Typ       Quelle         Modell    MAC
+#  -----------------------------------------------------------------------
+#   -               network   vlan_network   rtl8139   52:54:00:97:20:89
+#   -               network   vlan_network   virtio    52:54:00:81:a2:68
+#   -               network   vlan_network   virtio    00:00:00:00:00:01
+#   -               network   vlan_network   rtl8139   00:00:00:00:00:01
+#  
+#  # virsh --help | grep domif
+#      domif-setlink                  Link Status auf einer virtuellen Schnittstelle erstellen
+#      domiftune                      get/set-Parameter einer virtuellen Schnittstelle
+#      domif-getlink                  Link Status auf einer virtuellen Schnittstelle erhalten
+#      domifaddr                      Get network interfaces' addresses for a running domain
+#      domiflist                      Auflisten aller Domain Virtuellen Schnittstellen
+#      domifstat                      Status der Netzwerkschnittstelle für eine Domain abrufen
+#  
+#  
+#  
+#  # virsh domif-setlink --help
+#    NAME
+#      domif-setlink - Link Status auf einer virtuellen Schnittstelle erstellen
+#  
+#    SYNOPSIS
+#      domif-setlink <domain> <interface> <state> [--config] [--print-xml]
+#  
+#    BESCHREIBUNG
+#      Setzen Link Zustand der virtuelle Schnittstelle einer Domain. Dieses Kommando umhüllt die Verwendung des update-device Befehls.
+#  
+#    OPTIONEN
+#      [--domain] <string>  Domainname, ID oder UUID
+#      [--interface] <string>  Schnittstellen-Einheit (MAC-Adresse)
+#      [--state] <string>  Neuer Status der Einheit
+#      --config         Einfluss auf nächsten Systemstart
+#      --print-xml      print XML document rather than set the interface link state
+#  
+#  
+#  
+#  
+#  # virsh detach-interface --help
+#    NAME
+#      detach-interface - Netzwerkschnittstelle abhängen
+#  
+#    SYNOPSIS
+#      detach-interface <domain> <type> [--mac <string>] [--persistent] [--config] [--live] [--current] [--print-xml]
+#  
+#    BESCHREIBUNG
+#      Netzwerkschnittstelle abtrennen
+#  
+#    OPTIONEN
+#      [--domain] <string>  Domainname, ID oder UUID
+#      [--type] <string>  Netzwerkschnittstellentyp
+#      --mac <string>   MAC-Adresse
+#      --persistent     Live-Änderung dauerhaft machen 
+#      --config         Einfluss auf nächsten Systemstart
+#      --live           Einfluss auf laufende Domain
+#      --current        Einfluss auf aktuelle Domain
+#      --print-xml      print XML document rather than detach the interface
+#  
+#  
+#  
+#  
+#  virsh attach-interface --help
+#    NAME
+#      attach-interface - Netzwerkschnittstelle verbinden
+#  
+#    SYNOPSIS
+#      attach-interface <domain> <type> <source> [--target <string>] [--mac <string>] [--script <string>] [--model <string>] [--alias <string>] [--inbound <string>] [--outbound <string>] [--persistent] [--config] [--live] [--current] [--print-xml] [--managed] [--source-mode <string>]
+#  
+#    BESCHREIBUNG
+#      Neue Netzwerkschnittstelle verbinden.
+#  
+#    OPTIONEN
+#      [--domain] <string>  Domainname, ID oder UUID
+#      [--type] <string>  Netzwerkschnittstellentyp
+#      [--source] <string>  Quelle der Netzwerkschnittstelle
+#      --target <string>  Ziel-Netzwerk-Name
+#      --mac <string>   MAC-Adresse
+#      --script <string>  Skript zur Überbrückung einer Netzwerkschnittstelle
+#      --model <string>  Modell Typ
+#      --alias <string>  custom alias name of interface device
+#      --inbound <string>  eingehenden Verkehr der Domain kontrollieren
+#      --outbound <string>  ausgehenden Verkehr der Domain kontrollieren
+#      --persistent     Live-Änderung dauerhaft machen 
+#      --config         Einfluss auf nächsten Systemstart
+#      --live           Einfluss auf laufende Domain
+#      --current        Einfluss auf aktuelle Domain
+#      --print-xml      print XML document rather than attach the interface
+#      --managed        libvirt will automatically detach/attach the device from/to host
+#      --source-mode <string>  mode attribute of <source/> element
+#  
+#  

@@ -1,0 +1,12 @@
+<interface type="network">
+  {% if mac_address != ""  %}
+  <mac address="{{mac_address}}"/>
+  {% endif %}
+  <source network="{{libvirt_network}}" portgroup="{{vlan}}"/>
+  <virtualport type="openvswitch">
+  {% if id != ""  %}
+      <parameters interfaceid="{{id}}"/>
+  {% endif %}
+    </virtualport>
+  </interface>
+

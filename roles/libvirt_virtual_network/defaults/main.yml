@@ -5,6 +5,9 @@ autoconnect: yes
 ipv4_method: auto
 ipv4_address: 192.168.1.100/24
 ipv4_gateway: 192.168.1.1
-ovs_bridge: vlanbr
 connection_port: "connection_port"
 interface_port: "interface_port"
+default: default
+file_target_host: localhost
+libvirt_network: "{{inventory_hostname}}"
+libvirt_host: "{{inventory_hostname}}"

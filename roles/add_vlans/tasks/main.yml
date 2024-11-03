@@ -1,8 +1,20 @@
 ---
-- name: add vlan
+- name: add vlan userspace
   ansible.builtin.shell:  |
     {% for vlan in vlans %}
       nmcli c add type ovs-port conn.interface {{ vlan.interface }} master {{ vlan.master }} ovs-port.tag {{ vlan.tag }} con-name {{ vlan.port }}
-      nmcli c add type ovs-interface slave-type ovs-port conn.interface {{ vlan.interface }} master {{ vlan.port }} con-name {{ vlan.connection }} ipv4.method {{ vlan.ipv4_method }} ipv4.address {{ vlan.ipv4_address }}
+      {% if vlan.type == "intern" %}
+      nmcli c add type ovs-interface slave-type ovs-port conn.interface {{ vlan.interface }} master {{ vlan.port }} con-name {{ vlan.connection }} \
+      ipv4.method {{vlan.ipv4_method}} \
+      {% if vlan.if_ip is defined %}
+       ipv4.address {{ vlan.if_ip }}  \
+      {% endif %}
+       {% if vlan.if_gateway is defined  %}
+       ipv4.gateway {{ vlan.if_gateway }} 
+      {% endif %}
+      {% endif %}
+      {% if vlan.type == "tap" %}
+      nmcli con add type tun mode tap con-name {{ vlan.connection }} ifname {{vlan.interface}} master {{  vlan.port }}
+      ip link set {{ vlan.interface }} up
+      {% endif %}
     {% endfor %}
-

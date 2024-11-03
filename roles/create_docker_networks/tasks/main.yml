@@ -1,0 +1,27 @@
+---
+- name: get path
+  ansible.builtin.command: which {{platform}}
+  register: path
+
+- name: delete old docker networks
+  ansible.builtin.shell: |
+    if $({{path.stdout_lines[0]}} network exists {{prefix}}{{item.interface}}{{suffix}}); then
+      echo "network {{prefix}}{{item.interface}}{{suffix}} exists"
+      {{path.stdout_lines[0]}} network rm -f {{prefix}}{{item.interface}}{{suffix}}
+    else
+      echo "network {{prefix}}{{item.interface}}{{suffix}} does not exist"
+    fi
+  loop: "{{ vlans }}" 
+
+- name: create docker networks
+  shell: |
+    {% for item in vlans %}
+      if [[ "{{ item.interface }}" =~ "{{ ignore }}" ]]; then
+        echo add interface {{ item.interface }}
+        {{ path.stdout_lines[0] }} network create -d macvlan -o parent={{ item.interface }}  --ipam-driver {{ item.ipam_driver }} {% if item.sub is defined and item.if_gateway is defined  %} --subnet {{ item.sub }}     --gateway {{ item.if_gateway }} {% endif %} {{ prefix }}{{ item.interface }}{{ suffix }}
+      else
+        echo ignoring interface {{ item.interface }}
+      fi
+    {% endfor %}
+
+#--if_gateway 200.0.0.1

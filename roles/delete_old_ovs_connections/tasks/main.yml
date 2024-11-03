@@ -1,0 +1,33 @@
+---
+  # nmcli conn add type ovs-bridge conn.interface bridge0 autoconnect yes
+  # nmcli conn add type ovs-port conn.interface port0 master bridge0 autoconnect yes
+
+  # nmcli conn add type ovs-interface conn.interface iface0 master port0 autoconnect yes ipv4.method auto
+  # nmcli conn add type ovs-port conn.interface port1 master bridge0 autoconnect yes
+    
+- name: create bridge amd add a port to the bridge for the internal ovs interface (vlan_interface)
+  ansible.builtin.shell: |
+    delete_element() {
+        local element_type=$1
+        local name=$2
+        local uuid=$3
+        echo "Lösche $element_type: $name (UUID: $uuid)"
+        sudo nmcli connection delete $uuid
+    }
+    delete_type() {
+    elements1=$(nmcli connection show | grep -i "^[a-zA-Z0-9]\+.*ovs-$1")
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        # Extrahiere den Namen und die UUID
+        name=$(echo "$line" | cut -d' ' -f1)
+        uuid=$(echo "$line" | awk '{print $2}')
+        
+        # Lösche das Element
+        delete_element "$1" "$name" "$uuid"
+    done <<< "$elements1"
+    echo "deleted all elements of type $1 ."
+    }
+
+    nmcli con  up {{physical_nic}} && ovs-vsctl del-br {{ovs_bridge}} && nmcli con del ovs-bridge-{{ovs_bridge}}
+    delete_type "slave"
+    delete_type "port"
+    delete_type "interface"

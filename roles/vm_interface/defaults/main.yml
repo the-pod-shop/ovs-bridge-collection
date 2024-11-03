@@ -1,0 +1,15 @@
+---
+ovs_bridge: vlanbr
+nic: enp2s0
+autoconnect: yes
+ipv4_method: auto
+ipv4_address: 192.168.1.100/24
+ipv4_gateway: 192.168.1.1
+connection_port: "connection_port"
+interface_port: "interface_port"
+default: default
+mac_address: ""
+file_target_host: localhost
+libvirt_network: "{{inventory_hostname}}"
+libvirt_host: "{{inventory_hostname}}"
+id: ""

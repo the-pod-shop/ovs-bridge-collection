@@ -1,0 +1,43 @@
+---
+- name: Render network XML template
+  debug: 
+    msg: "{{ lookup('template', './network.xml.j2') }}"
+  register: xml
+
+- name: Get rendered XML content
+  set_fact:
+    my_xml: "{{xml.msg}}"
+  when: set_fact == true
+
+- name: Copy XML file to localhost
+  delegate_to: "{{file_target_host}}"
+  copy:
+    content: "{{xml.msg}}"
+    dest: "{{file}}"
+    mode: '0644'
+  when: file  != "" 
+
+- name: delete old network
+  ignore_errors: true
+  delegate_to: "{{libvirt_host}}"
+  community.libvirt.virt_net:
+    command: define
+    state: absent
+    name: "{{libvirt_network}}"
+  when: libvirt_network != "" and libvirt_host != ""
+
+- name: Define a new network
+  delegate_to: "{{libvirt_host}}"
+  community.libvirt.virt_net:
+    command: define
+    state: present
+    name: "{{libvirt_network}}"
+    xml: "{{xml.msg}}"
+  when: libvirt_network  != "" and libvirt_host != ""
+
+- name: Start the network
+  delegate_to: "{{libvirt_host}}"
+  community.libvirt.virt_net:
+    state: active
+    name: "{{libvirt_network}}"
+  when: libvirt_network  != "" and libvirt_host != ""

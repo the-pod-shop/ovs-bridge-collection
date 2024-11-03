@@ -1,7 +1,7 @@
 namespace: "ji_podhead"
 name: "ovs_bridge"
-description:  "create openvswitch bridges, or tagged vlans without accessing your machine manually and isolate your wm traffic in a single playbook!"
-version: "0.0.1"
+description:  "create openvswitch bridges, tagged vlans, libvirt/docker/podman networks without accessing your machine and isolate your wm traffic in a single playbook!"
+version: "0.0.3"
 readme: "README.md"
 authors:
     - "ji-podhead (https://https://www.github.com/ji-podhead)"
@@ -15,10 +15,14 @@ tags:
     - "openvswitch"
     - "isolate_vm_traffic" 
     - "vlan_aware_bridge"
+    - "docker_networks"
+    - "libvirt_network"
+    - "automate_networking"
+    - "network_segmentation"
     - "ovs_bridge"
     - "isolate_vm_traffic"
 
 
-repository: "https://www.github.com/the-pod-shop/ovs_bridge_collection"
+repository: "https://www.github.com/the-pod-shop/ovs-bridge-collection"
 
 

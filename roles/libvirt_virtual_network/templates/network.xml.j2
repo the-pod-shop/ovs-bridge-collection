@@ -1,0 +1,26 @@
+<network>
+      <name>{{libvirt_network}}</name>
+      <forward mode="bridge"/>
+      <bridge name="{{ovs_bridge}}"/>
+      <virtualport type="openvswitch"/>
+      <portgroup name="{{default}}" default="yes">
+      </portgroup>
+      {% for vlan in vlans %}
+     <portgroup name="{{vlan.interface}}">
+            <vlan>
+            <tag id="{{vlan.tag}}"/>
+            </vlan>
+      </portgroup>
+      {% endfor %}
+      
+     {% for trunk in trunks %}
+      <portgroup name="{{trunk.name}}">
+            <vlan trunk="yes">
+          {% for vlan in trunk.vlans %}
+              <tag id="{{vlan}}"/>
+            {% endfor %}
+   </vlan>
+      </portgroup>
+      
+      {% endfor %}
+</network>
