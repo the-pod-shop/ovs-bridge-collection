@@ -20,12 +20,13 @@ PLS find out how to install openvswitch on your machine! <br>
 
 - find the base package:
 
-```bash
-$ dnf search openvswitch
-```
+  ```bash
+  $ dnf search openvswitch
+  ```
 
 - look for the right package that contains ovs-vsctl
   - in my case i used v. 3.3
+ 
   ```bash 
   ---
   openvswitch3.3.x86_64 : Open vSwitch
@@ -145,7 +146,8 @@ $ dnf search openvswitch
 
 ### Libvirt VM Config
 - hotplug deletes and recreates the nic of the vm, so it should only be used if you change vlan
-- you should not change makes in runtime, i have not implemented a "deletion by pci id" method
+- dont duplicate mac addresses manually, or this role might fail
+  - i have not implemented a "deletion by pci id" method
 - if you enable hotplug you dont need to reboot to make changes active, but you maybe loose the 
 - without hotplug this role will update the interface
 
@@ -397,7 +399,7 @@ $ podman network inspect firewall_maclavan
 ```
 ## podman network inspect proxy_maclavan
 ```bash
-podman network inspect proxy_maclavan
+$ podman network inspect proxy_maclavan
 [
      {
           "name": "proxy_maclavan",
